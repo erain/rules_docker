@@ -19,7 +19,7 @@ set -eu
 # This is a generated file that loads all docker layers built by "docker_build".
 
 function guess_runfiles() {
-    pushd ${BASH_SOURCE[0]}.runfiles > /dev/null 2>&1
+    pushd $(dirname ${BASH_SOURCE[0]})%{name}.runfiles > /dev/null 2>&1
     pwd
     popd > /dev/null 2>&1
 }

@@ -61,7 +61,7 @@ def assemble(ctx, images, output, stamp=False):
 
     for i in range(0, len(image["diff_id"])):
       args += [
-          "--layer=" + 
+          "--layer=" +
           "@" + image["diff_id"][i].path +
           "=@" + image["blobsum"][i].path +
           # No @, not resolved through utils, always filename.
@@ -157,6 +157,7 @@ def incremental_load(ctx, images, output,
           "%{load_statements}": "\n".join(load_statements),
           "%{tag_statements}": "\n".join(tag_statements),
           "%{run_statements}": "\n".join(run_statements),
+          "%{name}": "/" + ctx.label.name
       },
       output = output,
       executable = True)
