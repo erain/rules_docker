@@ -124,6 +124,8 @@ def _build_layer(ctx, files=None, file_map=None, empty_files=None,
   arg_file = ctx.new_file(ctx.label.name + ".layer.args")
   ctx.file_action(arg_file, "\n".join(args))
 
+  print(args)
+
   ctx.action(
       executable = build_layer,
       arguments = ["--flagfile=" + arg_file.path],
