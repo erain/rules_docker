@@ -197,8 +197,8 @@ skylark_library(
 )
 
 skylark_library(
-    name = "layers",
-    srcs = ["layers.bzl"],
+    name = "layer_tools",
+    srcs = ["layer_tools.bzl"],
     deps = ["//skylib:path"],
 )
 

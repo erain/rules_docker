@@ -59,7 +59,7 @@ load(
     _string_to_label = "string_to_label",
 )
 load(
-    "//container:layers.bzl",
+    "//container:layer_tools.bzl",
     _assemble_image = "assemble",
     _get_layers = "get_from_target",
     _incr_load = "incremental_load",
@@ -123,8 +123,6 @@ def _build_layer(ctx, files=None, file_map=None, empty_files=None,
            for k in symlinks]
   arg_file = ctx.new_file(ctx.label.name + ".layer.args")
   ctx.file_action(arg_file, "\n".join(args))
-
-  print(args)
 
   ctx.action(
       executable = build_layer,
