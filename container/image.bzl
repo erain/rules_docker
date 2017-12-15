@@ -148,7 +148,7 @@ def _get_base_config(ctx):
     l = _get_layers(ctx, ctx.attr.base, ctx.files.base)
     return l.get("config")
 
-def _image_config(ctx, layer_name, entrypoint=None, cmd=None, env=None):
+def _image_config(ctx, layer_names, entrypoint=None, cmd=None, env=None):
   """Create the configuration for a new container image."""
   config = ctx.new_file(ctx.label.name + ".config")
 
@@ -186,8 +186,9 @@ def _image_config(ctx, layer_name, entrypoint=None, cmd=None, env=None):
   if ctx.attr.workdir:
     args += ["--workdir=" + ctx.attr.workdir]
 
-  inputs = [layer_name]
-  args += ["--layer=@" + layer_name.path]
+  inputs = layer_names
+  for layer_name in layer_names:
+    args += ["--layer=@" + layer_name.path]
 
   if ctx.attr.label_files:
     inputs += ctx.files.label_files
@@ -220,9 +221,12 @@ def _repository_name(ctx):
   # the v2 registry specification.
   return _join_path(ctx.attr.repository, ctx.label.package)
 
+def _getLayerInfo(layers, info):
+  return [getattr(layer[LayerInfo], info) for layer in layers]
+
 def _impl(ctx, files=None, file_map=None, empty_files=None, directory=None,
           entrypoint=None, cmd=None, symlinks=None, output=None, env=None,
-          debs=None, tars=None):
+          layers=None, debs=None, tars=None):
   """Implementation for the container_image rule.
 
   Args:
@@ -236,6 +240,7 @@ def _impl(ctx, files=None, file_map=None, empty_files=None, directory=None,
     symlinks: str Dict, overrides ctx.attr.symlinks
     output: File to use as output for script to load docker image
     env: str Dict, overrides ctx.attr.env
+    layers: label List, overrides ctx.attr.layers
     debs: File list, overrides ctx.files.debs
     tars: File list, overrides ctx.files.tars
   """
@@ -249,6 +254,7 @@ def _impl(ctx, files=None, file_map=None, empty_files=None, directory=None,
   symlinks = symlinks or ctx.attr.symlinks
   output = output or ctx.outputs.executable
   env = env or ctx.attr.env
+  layers = layers or ctx.attr.layers
   debs = debs or ctx.files.debs
   tars = tars or ctx.files.tars
 
@@ -261,21 +267,24 @@ def _impl(ctx, files=None, file_map=None, empty_files=None, directory=None,
   # Generate the zipped filesystem layer, and its sha256 (aka blob sum)
   zipped_layer, blob_sum = _zip_layer(ctx, unzipped_layer)
 
-  # Generate the new config using the attributes specified and the diff_id
-  config_file, config_digest = _image_config(
-      ctx, diff_id, entrypoint=entrypoint, cmd=cmd, env=env)
-
-  # Construct a temporary name based on the build target.
-  tag_name = _repository_name(ctx) + ":" + ctx.label.name
-
   # Get the layers and shas from our base.
   # These are ordered as they'd appear in the v2.2 config,
   # so they grow at the end.
   parent_parts = _get_layers(ctx, ctx.attr.base, ctx.files.base)
-  zipped_layers = parent_parts.get("zipped_layer", []) + [zipped_layer]
-  shas = parent_parts.get("blobsum", []) + [blob_sum]
-  unzipped_layers = parent_parts.get("unzipped_layer", []) + [unzipped_layer]
-  diff_ids = parent_parts.get("diff_id", []) + [diff_id]
+  zipped_layers = parent_parts.get("zipped_layer", []) + _getLayerInfo(layers, "zipped_layer") + [zipped_layer]
+  shas = parent_parts.get("blobsum", [])  + _getLayerInfo(layers, "blob_sum") + [blob_sum]
+  unzipped_layers = parent_parts.get("unzipped_layer", []) + _getLayerInfo(layers, "unzipped_layer") + [unzipped_layer]
+  layer_diff_ids = _getLayerInfo(layers, "diff_id") + [diff_id]
+  diff_ids = parent_parts.get("diff_id", []) + layer_diff_ids
+
+  # Generate the new config using the attributes specified and the diff_id
+  config_file, config_digest = _image_config(
+      ctx, layer_diff_ids, entrypoint=entrypoint, cmd=cmd, env=env)
+
+  print(config_file.path)
+
+  # Construct a temporary name based on the build target.
+  tag_name = _repository_name(ctx) + ":" + ctx.label.name
 
   # These are the constituent parts of the Container image, which each
   # rule in the chain must preserve.
@@ -298,6 +307,8 @@ def _impl(ctx, files=None, file_map=None, empty_files=None, directory=None,
       # base image.
       "legacy": parent_parts.get("legacy"),
   }
+
+  print(container_parts)
 
   # We support incrementally loading or assembling this single image
   # with a temporary name given by its build rule.
