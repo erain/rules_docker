@@ -253,7 +253,6 @@ def _impl(ctx, files=None, file_map=None, empty_files=None, directory=None,
   cmd = cmd or ctx.attr.cmd
   symlinks = symlinks or ctx.attr.symlinks
   output = output or ctx.outputs.executable
-  env = env or ctx.attr.env
   layers = layers or ctx.attr.layers
   debs = debs or ctx.files.debs
   tars = tars or ctx.files.tars
@@ -276,6 +275,11 @@ def _impl(ctx, files=None, file_map=None, empty_files=None, directory=None,
   unzipped_layers = parent_parts.get("unzipped_layer", []) + _getLayerInfo(layers, "unzipped_layer") + [unzipped_layer]
   layer_diff_ids = _getLayerInfo(layers, "diff_id") + [diff_id]
   diff_ids = parent_parts.get("diff_id", []) + layer_diff_ids
+
+  # Get and merge environment variables
+  env = {}
+  [env.update(layer[LayerInfo].env) for layer in layers]
+  env.update(ctx.attr.env)
 
   # Generate the new config using the attributes specified and the diff_id
   config_file, config_digest = _image_config(
