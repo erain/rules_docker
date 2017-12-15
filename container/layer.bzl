@@ -79,7 +79,7 @@ def _build_layer(ctx, files=None, file_map=None, empty_files=None,
     if ":" in k:
       fail("The source of a symlink cannot container ':', got: %s" % k)
   args += ["--link=%s:%s" % (k, symlinks[k]) for k in symlinks]
-  arg_file = ctx.new_file("%{name}-layer.args")
+  arg_file = ctx.new_file(ctx.label.name + "-layer.args")
   ctx.file_action(arg_file, "\n".join(args))
   ctx.action(
       executable = build_layer,
@@ -94,6 +94,8 @@ def _build_layer(ctx, files=None, file_map=None, empty_files=None,
 def _zip_layer(ctx, layer):
   zipped_layer = _gzip(ctx, layer)
   return zipped_layer, _sha256(ctx, zipped_layer)
+
+LayerInfo = provider()
 
 def _impl(ctx, files=None, file_map=None, empty_files=None, directory=None,
           symlinks=None, output=None, env=None, debs=None, tars=None):
@@ -125,17 +127,12 @@ def _impl(ctx, files=None, file_map=None, empty_files=None, directory=None,
                                          debs=debs, tars=tars)
   # Generate the zipped filesystem layer, and its sha256 (aka blob sum)
   zipped_layer, blob_sum = _zip_layer(ctx, unzipped_layer)
-  # These are the constituent parts of the Container image
-  layer_parts = {
-      "zipped_layer": zipped_layer,
-      "blob_sum": blob_sum,
-      "unzipped_layer": unzipped_layer,
-      "diff_id": diff_id,
-  }
-  runfiles = ctx.runfiles(files = [unzipped_layer] + [diff_id])
-  return struct(runfiles = runfiles,
-                files = depset([ctx.outputs.layer]),
-                layer_parts = layer_parts)
+  # Returns constituent parts of the Container layer as provider
+  return [LayerInfo(zipped_layer=zipped_layer,
+                    blob_sum=blob_sum,
+                    unzipped_layer=unzipped_layer,
+                    diff_id=diff_id,
+                    env=env)]
 
 
 _layer_attrs = dict({

@@ -66,6 +66,10 @@ load(
     _layer_tools = "tools",
 )
 load(
+    "//container:layer.bzl",
+    "LayerInfo",
+)
+load(
     "//skylib:path.bzl",
     "dirname",
     "strip_prefix",
@@ -342,6 +346,7 @@ _attrs = dict({
     ),
     "label_file_strings": attr.string_list(),
     "empty_files": attr.string_list(),
+    "layers": attr.label_list(providers=[LayerInfo]),
     "build_layer": attr.label(
         default = Label("//container:build_tar"),
         cfg = "host",
@@ -444,6 +449,9 @@ def _validate_command(name, argument):
 #          "/path/to/link": "/path/to/target",
 #          ...
 #      },
+#
+#      # Other layers built from container_layer rule
+#      layers = [":c-lang-layer", ":java-lang-layer", ...]
 #
 #      # https://docs.docker.com/engine/reference/builder/#entrypoint
 #      entrypoint="...", or
