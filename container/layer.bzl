@@ -59,11 +59,11 @@ def magic_path(ctx, f):
     # Otherwise, files are added without a directory prefix at all.
     return f.basename
 
-def _build_layer(ctx, files=None, file_map=None, empty_files=None,
+def build_layer(ctx, files=None, file_map=None, empty_files=None,
                  directory=None, symlinks=None, debs=None, tars=None):
   """Build the current layer for appending it to the base layer"""
   layer = ctx.outputs.layer
-  build_layer = ctx.executable.build_layer
+  build_layer_exec = ctx.executable.build_layer
   args = [
       "--output=" + layer.path,
       "--directory=" + directory,
@@ -82,7 +82,7 @@ def _build_layer(ctx, files=None, file_map=None, empty_files=None,
   arg_file = ctx.new_file(ctx.label.name + "-layer.args")
   ctx.file_action(arg_file, "\n".join(args))
   ctx.action(
-      executable = build_layer,
+      executable = build_layer_exec,
       arguments = ["--flagfile=" + arg_file.path],
       inputs = files + file_map.values() + tars + debs + [arg_file],
       outputs = [layer],
@@ -91,7 +91,7 @@ def _build_layer(ctx, files=None, file_map=None, empty_files=None,
   )
   return layer, _sha256(ctx, layer)
 
-def _zip_layer(ctx, layer):
+def zip_layer(ctx, layer):
   zipped_layer = _gzip(ctx, layer)
   return zipped_layer, _sha256(ctx, zipped_layer)
 
@@ -121,12 +121,12 @@ def _impl(ctx, files=None, file_map=None, empty_files=None, directory=None,
   debs = debs or ctx.files.debs
   tars = tars or ctx.files.tars
   # Generate the unzipped filesystem layer, and its sha256 (aka diff_id)
-  unzipped_layer, diff_id = _build_layer(ctx, files=files, file_map=file_map,
-                                         empty_files=empty_files,
-                                         directory=directory, symlinks=symlinks,
-                                         debs=debs, tars=tars)
+  unzipped_layer, diff_id = build_layer(ctx, files=files, file_map=file_map,
+                                        empty_files=empty_files,
+                                        directory=directory, symlinks=symlinks,
+                                        debs=debs, tars=tars)
   # Generate the zipped filesystem layer, and its sha256 (aka blob sum)
-  zipped_layer, blob_sum = _zip_layer(ctx, unzipped_layer)
+  zipped_layer, blob_sum = zip_layer(ctx, unzipped_layer)
   # Returns constituent parts of the Container layer as provider
   return [LayerInfo(zipped_layer=zipped_layer,
                     blob_sum=blob_sum,

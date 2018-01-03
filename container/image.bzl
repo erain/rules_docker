@@ -67,6 +67,9 @@ load(
 )
 load(
     "//container:layer.bzl",
+    "magic_path",
+    "build_layer",
+    "zip_layer",
     "LayerInfo",
 )
 load(
@@ -80,67 +83,6 @@ load(
     "//skylib:serialize.bzl",
     _serialize_dict = "dict_to_associative_list",
 )
-
-def magic_path(ctx, f):
-  # Right now the logic this uses is a bit crazy/buggy, so to support
-  # bug-for-bug compatibility in the foo_image rules, expose the logic.
-  # See also: https://github.com/bazelbuild/rules_docker/issues/106
-  # See also: https://groups.google.com/forum/#!topic/bazel-discuss/1lX3aiTZX3Y
-
-  if ctx.attr.data_path:
-    # If data_prefix is specified, then add files relative to that.
-    data_path = _join_path(
-        dirname(ctx.outputs.out.short_path),
-        _canonicalize_path(ctx.attr.data_path))
-    return strip_prefix(f.short_path, data_path)
-  else:
-    # Otherwise, files are added without a directory prefix at all.
-    return f.basename
-
-def _build_layer(ctx, files=None, file_map=None, empty_files=None,
-                 directory=None, symlinks=None, debs=None, tars=None):
-  """Build the current layer for appending it the base layer.
-
-  Args:
-    files: File list, overrides ctx.files.files
-    directory: str, overrides ctx.attr.directory
-    symlinks: str Dict, overrides ctx.attr.symlinks
-  """
-
-  layer = ctx.outputs.layer
-  build_layer = ctx.executable.build_layer
-  args = [
-      "--output=" + layer.path,
-      "--directory=" + directory,
-      "--mode=" + ctx.attr.mode,
-  ]
-
-  args += ["--file=%s=%s" % (f.path, magic_path(ctx, f)) for f in files]
-  args += ["--file=%s=%s" % (f.path, path) for (path, f) in file_map.items()]
-  args += ["--empty_file=%s" % f for f in empty_files or []]
-  args += ["--tar=" + f.path for f in tars]
-  args += ["--deb=" + f.path for f in debs]
-  for k in symlinks:
-    if ':' in k:
-      fail("The source of a symlink cannot contain ':', got: %s" % k)
-  args += ["--link=%s:%s" % (k, symlinks[k])
-           for k in symlinks]
-  arg_file = ctx.new_file(ctx.label.name + ".layer.args")
-  ctx.file_action(arg_file, "\n".join(args))
-
-  ctx.action(
-      executable = build_layer,
-      arguments = ["--flagfile=" + arg_file.path],
-      inputs = files + file_map.values() + tars + debs + [arg_file],
-      outputs = [layer],
-      use_default_shell_env=True,
-      mnemonic="ImageLayer"
-  )
-  return layer, _sha256(ctx, layer)
-
-def _zip_layer(ctx, layer):
-  zipped_layer = _gzip(ctx, layer)
-  return zipped_layer, _sha256(ctx, zipped_layer)
 
 def _get_base_config(ctx):
   if ctx.files.base:
@@ -258,13 +200,13 @@ def _impl(ctx, files=None, file_map=None, empty_files=None, directory=None,
   tars = tars or ctx.files.tars
 
   # Generate the unzipped filesystem layer, and its sha256 (aka diff_id).
-  unzipped_layer, diff_id = _build_layer(ctx, files=files, file_map=file_map,
-                                         empty_files=empty_files,
-                                         directory=directory, symlinks=symlinks,
-                                         debs=debs, tars=tars)
+  unzipped_layer, diff_id = build_layer(ctx, files=files, file_map=file_map,
+                                        empty_files=empty_files,
+                                        directory=directory, symlinks=symlinks,
+                                        debs=debs, tars=tars)
 
   # Generate the zipped filesystem layer, and its sha256 (aka blob sum)
-  zipped_layer, blob_sum = _zip_layer(ctx, unzipped_layer)
+  zipped_layer, blob_sum = zip_layer(ctx, unzipped_layer)
 
   # Get the layers and shas from our base.
   # These are ordered as they'd appear in the v2.2 config,
