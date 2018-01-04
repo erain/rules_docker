@@ -67,7 +67,6 @@ load(
 )
 load(
     "//container:layer.bzl",
-    "magic_path",
     "build_layer",
     "zip_layer",
     "LayerInfo",
