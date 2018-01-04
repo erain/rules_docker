@@ -68,10 +68,11 @@ class ImageTest(unittest.TestCase):
 
   def test_files_with_file_base(self):
     with TestImage('files_in_layer_with_files_base') as img:
-      self.assertDigest(img, '84c1e7b6037f6eaf305f3f051363c089c32cb1eae8a714ea1ccfd7ba7dd8912f')
+      self.assertDigest(img, '4b008d8241bdbbe930d72d8f0ee7b61d11561946db0fd52d02dbcb8842b3a958')
       self.assertEqual(3, len(img.fs_layers()))
       self.assertLayerNContains(img, 2, ['.', './foo'])
-      self.assertLayerNContains(img, 1, ['.', './bar'])
+      self.assertLayerNContains(img, 1, ['.', './baz'])
+      self.assertLayerNContains(img, 0, ['.', './bar'])
 
   def test_tar_base(self):
     with TestImage('tar_base') as img:
@@ -89,6 +90,17 @@ class ImageTest(unittest.TestCase):
       self.assertTopLayerContains(img, [
         './asdf', './usr', './usr/bin',
         './usr/bin/miraclegrow'])
+
+  def test_tar_with_tar_base(self):
+    with TestImage('tars_in_layer_with_tar_base') as img:
+      self.assertDigest(img, '80f850359828f763ae544f9b7725f89755f1a28a80738a514735becae60924af')
+      self.assertEqual(3, len(img.fs_layers()))
+      self.assertTopLayerContains(img, [
+        './asdf', './usr', './usr/bin',
+        './usr/bin/miraclegrow'])
+      self.assertLayerNContains(img, 1, ['.', './three', './three/three'])
+      self.assertLayerNContains(img, 2, [
+          './usr', './usr/bin', './usr/bin/unremarkabledeath'])
 
   def test_directory_with_tar_base(self):
     with TestImage('directory_with_tar_base') as img:
@@ -125,6 +137,14 @@ class ImageTest(unittest.TestCase):
       self.assertDigest(img, 'cc3ca2b7307e79ad52c6e8878740f86dcfe7055d2b7118aaa10b52cbba8b9898')
       self.assertEqual(3, len(img.fs_layers()))
       self.assertTopLayerContains(img, ['.', './foo'])
+
+  def test_layers_with_docker_tarball_base(self):
+    with TestImage('layers_with_docker_tarball_base') as img:
+      self.assertDigest(img, '927b3b98286e16727e2144152efb90f7394b0ad37d16668d40ce22b9e49debf9')
+      self.assertEqual(5, len(img.fs_layers()))
+      self.assertTopLayerContains(img, ['.', './foo'])
+      self.assertLayerNContains(img, 1, ['.', './three', './three/three'])
+      self.assertLayerNContains(img, 2, ['.', './baz'])
 
   def test_base_with_entrypoint(self):
     with TestImage('base_with_entrypoint') as img:
@@ -166,6 +186,12 @@ class ImageTest(unittest.TestCase):
       self.assertDigest(img, '0b02ba27ff0d63d9430648e47743cba4ae8a1a4f9a80e0e1f9a1fa86835b2b17')
       self.assertEqual(2, len(img.fs_layers()))
       self.assertConfigEqual(img, 'Env', ['bar=blah blah blah', 'foo=/asdf'])
+
+  def test_layers_with_env(self):
+    with TestImage('layers_with_env') as img:
+      self.assertDigest(img, 'c98768980847b394c4e194c7041662703e20a07925c8db78c12f2bcb2b09c926')
+      self.assertEqual(3, len(img.fs_layers()))
+      self.assertConfigEqual(img, 'Env', ['abc=ABC', 'xyz=xyz'])
 
   def test_dummy_repository(self):
     # We allow users to specify an alternate repository name instead of 'bazel/'
