@@ -19,6 +19,7 @@ load(
     "container_bundle",
     "container_flatten",
     "container_image",
+    "container_layer",
     "container_import",
 )
 load("//testdata:utils.bzl", "generate_deb")
@@ -79,6 +80,18 @@ container_image(
 container_image(
     name = "files_with_files_base",
     base = ":files_base",
+    files = ["bar"],
+    mode = "0644",
+)
+
+container_image(
+    name = "files_in_layer_with_files_base",
+    base = ":files_base",
+    container_layers = [":files_in_layer"],
+)
+
+container_layer(
+    name = "files_in_layer",
     files = ["bar"],
     mode = "0644",
 )

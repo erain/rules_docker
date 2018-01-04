@@ -167,7 +167,7 @@ def _getLayerInfo(layers, info):
 
 def _impl(ctx, files=None, file_map=None, empty_files=None, directory=None,
           entrypoint=None, cmd=None, symlinks=None, output=None, env=None,
-          layers=None, debs=None, tars=None):
+          container_layers=None, debs=None, tars=None):
   """Implementation for the container_image rule.
 
   Args:
@@ -194,7 +194,7 @@ def _impl(ctx, files=None, file_map=None, empty_files=None, directory=None,
   cmd = cmd or ctx.attr.cmd
   symlinks = symlinks or ctx.attr.symlinks
   output = output or ctx.outputs.executable
-  layers = layers or ctx.attr.layers
+  layers = container_layers or ctx.attr.container_layers
   debs = debs or ctx.files.debs
   tars = tars or ctx.files.tars
 
@@ -226,8 +226,6 @@ def _impl(ctx, files=None, file_map=None, empty_files=None, directory=None,
   config_file, config_digest = _image_config(
       ctx, layer_diff_ids, entrypoint=entrypoint, cmd=cmd, env=env)
 
-  print(config_file.path)
-
   # Construct a temporary name based on the build target.
   tag_name = _repository_name(ctx) + ":" + ctx.label.name
 
@@ -252,8 +250,6 @@ def _impl(ctx, files=None, file_map=None, empty_files=None, directory=None,
       # base image.
       "legacy": parent_parts.get("legacy"),
   }
-
-  print(container_parts)
 
   # We support incrementally loading or assembling this single image
   # with a temporary name given by its build rule.
@@ -302,7 +298,7 @@ _attrs = dict({
     ),
     "label_file_strings": attr.string_list(),
     "empty_files": attr.string_list(),
-    "layers": attr.label_list(providers=[LayerInfo]),
+    "container_layers": attr.label_list(providers=[LayerInfo]),
     "build_layer": attr.label(
         default = Label("//container:build_tar"),
         cfg = "host",

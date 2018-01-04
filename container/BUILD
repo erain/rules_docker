@@ -84,6 +84,7 @@ TEST_TARGETS = [
     "directory_with_tar_base",
     "files_base",
     "files_with_files_base",
+    "files_in_layer_with_files_base",
     "files_with_tar_base",
     "tar_base",
     "tar_with_files_base",

@@ -66,6 +66,13 @@ class ImageTest(unittest.TestCase):
       self.assertEqual(2, len(img.fs_layers()))
       self.assertTopLayerContains(img, ['.', './bar'])
 
+  def test_files_with_file_base(self):
+    with TestImage('files_in_layer_with_files_base') as img:
+      self.assertDigest(img, '84c1e7b6037f6eaf305f3f051363c089c32cb1eae8a714ea1ccfd7ba7dd8912f')
+      self.assertEqual(3, len(img.fs_layers()))
+      self.assertLayerNContains(img, 2, ['.', './foo'])
+      self.assertLayerNContains(img, 1, ['.', './bar'])
+
   def test_tar_base(self):
     with TestImage('tar_base') as img:
       self.assertDigest(img, 'df626b895bc8c7b18e6615ac09ffbd0693268a24a817a94030ff88c37602147e')
